@@ -52,7 +52,38 @@ Optional config — copy `.env.example` to `.env`:
   investigations, then writes an evidence-backed teardown with a rebuild plan.
 
 The mode toggle (`Auto` / `Direct` / `Agent`) chooses per run; `Auto` uses Agent
-when the target needs it and a key is present, otherwise Direct.
+when the target needs it and the LLM is reachable, otherwise Direct.
+
+---
+
+## Native binaries (Ghidra)
+
+Decompiling native binaries (Mach-O / ELF / PE → pseudocode) needs an external
+analysis engine. REA drives an existing **Ghidra 12.1.x** install; point it at
+one with env vars (the console passes them through to the engine it spawns, so
+they belong in `.env`):
+
+```
+GHIDRA_INSTALL_DIR=/absolute/path/to/ghidra_12.1.4_PUBLIC
+JAVA_HOME=/absolute/path/to/jdk-21   # a full JDK 21+ (must include javac)
+```
+
+**Apple Silicon note:** the official 12.1.4 release ships decompiler binaries
+only for `linux_x86_64` and `win_x86_64`. On an arm64 Mac you must build the
+native decompiler from the source included in the release, then drop it in:
+
+```bash
+cd "$GHIDRA_INSTALL_DIR/Ghidra/Features/Decompiler/src/decompile/cpp"
+make clean
+make ghidra_opt ARCH_TYPE="-arch arm64" \
+  ADDITIONAL_FLAGS="-mmacosx-version-min=11.0 -w" OSDIR=mac_arm_64
+mkdir -p ../os/mac_arm_64
+cp ghidra_opt ../os/mac_arm_64/decompile
+```
+
+Verify with `rea doctor` (the `ghidra` check should read `healthy`) or the
+console's **Engine check** button. Without this, every other target still works;
+only native decompilation is gated on it.
 
 ---
 
