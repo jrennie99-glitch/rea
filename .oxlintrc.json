@@ -108,6 +108,7 @@
     ".codex",
     ".devin",
     ".factory",
-    "third_party"
+    "third_party",
+    "console"
   ]
 }

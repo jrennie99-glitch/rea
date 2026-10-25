@@ -1,0 +1,14 @@
+# Runtime state — never committed
+data/
+*.log
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Node
+node_modules/
+
+# OS
+.DS_Store

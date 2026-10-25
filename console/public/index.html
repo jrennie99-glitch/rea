@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>REA Console · Reverse Engineer Anything</title>
+    <meta name="description" content="A cockpit for the REA engine — paste a link or describe a target and tear it down." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/app.css" />
+  </head>
+  <body>
+    <div class="grid-overlay" aria-hidden="true"></div>
+
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark">REA</span>
+        <span class="brand-sub">Reverse&nbsp;Engineer&nbsp;Anything</span>
+      </div>
+      <div class="status-cluster" id="statusCluster">
+        <span class="pill pill-muted" id="modePill">checking…</span>
+        <span class="pill pill-muted" id="chromePill">chrome…</span>
+        <button class="ghost-btn" id="doctorBtn" type="button">Engine check</button>
+      </div>
+    </header>
+
+    <main class="stage">
+      <section class="console-head">
+        <p class="eyebrow">Teardown console</p>
+        <h1 class="display">
+          See how anything<br /><em>actually works.</em>
+        </h1>
+        <p class="lede">
+          Paste a URL, drop a local app path, or just describe a target. REA inspects it down to the
+          evidence and shows you how it's built — and how to rebuild it.
+        </p>
+      </section>
+
+      <section class="composer" aria-label="Target">
+        <div class="composer-field">
+          <textarea
+            id="inputBox"
+            rows="2"
+            spellcheck="false"
+            autocomplete="off"
+            placeholder="https://linear.app   ·   ~/apps/some.asar   ·   how does Figma's multiplayer cursor sync work?"
+          ></textarea>
+          <!-- honeypot: real users never see or fill this -->
+          <input
+            class="trap"
+            type="text"
+            name="contact_url_confirm"
+            id="trapField"
+            tabindex="-1"
+            autocomplete="off"
+            aria-hidden="true"
+          />
+          <div class="composer-row">
+            <span class="detect-chip" id="detectChip" data-type="research">Research</span>
+            <div class="spacer"></div>
+            <div class="mode-toggle" role="radiogroup" aria-label="Mode">
+              <button type="button" class="mode active" data-mode="auto" role="radio" aria-checked="true">Auto</button>
+              <button type="button" class="mode" data-mode="direct" role="radio" aria-checked="false">Direct</button>
+              <button type="button" class="mode" data-mode="agent" role="radio" aria-checked="false">Agent</button>
+            </div>
+            <button class="run-btn" id="runBtn" type="button">
+              <span class="run-label">Reverse-engineer</span>
+            </button>
+          </div>
+        </div>
+        <p class="composer-hint" id="composerHint"></p>
+      </section>
+
+      <section class="workspace" id="workspace" hidden>
+        <aside class="rail">
+          <div class="rail-block">
+            <h2 class="rail-title">Run</h2>
+            <ul class="timeline" id="timeline"></ul>
+          </div>
+          <div class="rail-block">
+            <h2 class="rail-title">History</h2>
+            <ul class="history" id="history"></ul>
+          </div>
+        </aside>
+
+        <div class="feed" id="feed"></div>
+      </section>
+
+      <section class="empty" id="emptyState">
+        <div class="empty-art" aria-hidden="true">
+          <span>◇</span><span>◆</span><span>◇</span>
+        </div>
+        <p>No teardown yet. Give REA something to take apart.</p>
+        <div class="examples">
+          <button class="example" data-ex="https://news.ycombinator.com">A website →</button>
+          <button class="example" data-ex="how does Spotify's Discover Weekly recommendation work?">A concept →</button>
+          <button class="example" data-ex="~/path/to/app.asar">A local app →</button>
+        </div>
+      </section>
+    </main>
+
+    <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>

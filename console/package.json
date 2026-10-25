@@ -1,0 +1,18 @@
+{
+  "name": "rea-console",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Reverse-Engineer-Anything console — a premium web cockpit that drives the local REA engine.",
+  "type": "module",
+  "engines": {
+    "node": ">=22.19"
+  },
+  "bin": {
+    "rea-console": "server/index.mjs"
+  },
+  "scripts": {
+    "start": "node server/index.mjs",
+    "dev": "node --watch server/index.mjs"
+  },
+  "dependencies": {}
+}
