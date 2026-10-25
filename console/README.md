@@ -85,6 +85,20 @@ Verify with `rea doctor` (the `ghidra` check should read `healthy`) or the
 console's **Engine check** button. Without this, every other target still works;
 only native decompilation is gated on it.
 
+### Android APKs (JADX)
+
+Method-level APK decompilation uses a caller-supplied **headless JADX** engine
+(pinned `jadx-headless-mcp 0.7.1`) plus a full JDK. APK static inspection works
+without it; only `inspect-android-method` needs it. Download the pinned JAR
+(REA verifies its SHA-256) and point at it in `.env`:
+
+```
+REA_JADX_MCP_JAR=/absolute/path/jadx-headless-mcp-0.7.1-all.jar
+```
+
+Verified: `inspect-android-method <apk> <class> <method>` returns real Java
+source (provider `JADX headless 0.7.1`, JDK 21).
+
 ---
 
 ## Security
