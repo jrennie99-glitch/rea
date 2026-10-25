@@ -65,6 +65,34 @@ function resolveReaNode() {
   return candidates.find((p) => existsSync(p)) || process.execPath;
 }
 
+// ── Agent brain selection ────────────────────────────────────────────────
+// Open-source first: if nothing is configured, default to a local OpenAI-
+// compatible server (Ollama). An explicit base URL or an Anthropic key
+// overrides. No key is required for the local path.
+const explicitLlmBase = env.REA_CONSOLE_LLM_BASE_URL || "";
+const hasAnthropic = Boolean(env.ANTHROPIC_API_KEY);
+const llmBackend = explicitLlmBase ? "openai" : hasAnthropic ? "anthropic" : "openai";
+const llmBaseUrl =
+  llmBackend === "openai" ? (explicitLlmBase || "http://127.0.0.1:11434/v1") : "";
+const llmModel =
+  env.REA_CONSOLE_LLM_MODEL ||
+  (llmBackend === "anthropic" ? env.REA_CONSOLE_MODEL || "claude-opus-5-5" : "qwen2.5:3b");
+// Dummy key keeps OpenAI-compatible servers (Ollama/LM Studio/llama.cpp) happy;
+// hosted gateways (OpenRouter, Together, Groq…) take a real one here.
+const llmKey = env.REA_CONSOLE_LLM_KEY || "ollama";
+
+// Optional two-model pipeline (OpenAI/local backend only): the driver above
+// does the tool-calling to gather evidence, then this writer model synthesises
+// the final teardown. Plays a tool-capable model (qwen) against a stronger
+// writer (e.g. ornith). Default on for the local setup; set empty to disable.
+const localDefault = llmBackend === "openai" && !explicitLlmBase;
+const llmWriter =
+  env.REA_CONSOLE_LLM_WRITER !== undefined
+    ? env.REA_CONSOLE_LLM_WRITER
+    : localDefault
+      ? "ornith-uncensored:latest"
+      : "";
+
 export const config = Object.freeze({
   port: int(env.REA_CONSOLE_PORT, 7749),
   bind,
@@ -73,9 +101,14 @@ export const config = Object.freeze({
   token: env.REA_CONSOLE_TOKEN || "",
   tokenRequired: !isLoopback || Boolean(env.REA_CONSOLE_TOKEN),
 
+  backend: llmBackend,
   anthropicKey: env.ANTHROPIC_API_KEY || "",
-  model: env.REA_CONSOLE_MODEL || "claude-opus-5-5",
-  agentEnabled: Boolean(env.ANTHROPIC_API_KEY),
+  llmBaseUrl,
+  llmModel,
+  llmWriter: llmBackend === "openai" ? llmWriter : "",
+  llmKey,
+  model: llmModel, // display label
+  agentEnabled: true, // a backend always exists (local default); health reports reachability
 
   reaBin: env.REA_BIN || resolve(REPO_ROOT, "scripts", "rea.mjs"),
   reaNode: resolveReaNode(),

@@ -31,12 +31,16 @@ async function health() {
     if (!res.ok) throw new Error();
     const h = await res.json();
     const modePill = $("#modePill");
-    if (h.agentEnabled) {
-      modePill.textContent = `agent · ${h.model}`;
+    if (h.llmReady) {
+      modePill.textContent = h.writer ? `agent · ${h.model} → ${h.writer}` : `agent · ${h.model}`;
       modePill.className = "pill pill-on";
+      modePill.title = h.writer
+        ? `backend: ${h.backend} · driver ${h.model}, writer ${h.writer}`
+        : `backend: ${h.backend}`;
     } else {
-      modePill.textContent = "direct only";
+      modePill.textContent = h.backend === "anthropic" ? "no API key" : "LLM offline";
       modePill.className = "pill pill-off";
+      modePill.title = h.backend === "anthropic" ? "set ANTHROPIC_API_KEY" : `start your LLM server (${h.model})`;
     }
     const chromePill = $("#chromePill");
     chromePill.textContent = h.chrome ? "chrome ✓" : "no chrome";

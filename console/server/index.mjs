@@ -128,7 +128,18 @@ async function handleAnalyze(req, res, bodyText) {
   }
 }
 
+async function llmReachable() {
+  if (config.backend === "anthropic") return Boolean(config.anthropicKey);
+  try {
+    const res = await fetch(`${config.llmBaseUrl}/models`, { signal: AbortSignal.timeout(1500) });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 async function handleHealth(res) {
+  const llmReady = await llmReachable();
   send(
     res,
     200,
@@ -136,7 +147,10 @@ async function handleHealth(res) {
     JSON.stringify({
       ok: true,
       agentEnabled: config.agentEnabled,
-      model: config.agentEnabled ? config.model : null,
+      backend: config.backend,
+      model: config.model,
+      writer: config.llmWriter || null,
+      llmReady,
       chrome: Boolean(resolveChrome()),
       reaBin: config.reaBin,
       shield: shieldStats(),
