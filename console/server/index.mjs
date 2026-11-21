@@ -3,7 +3,6 @@
 import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { timingSafeEqual } from "node:crypto";
 import { config } from "./config.mjs";
 import { log } from "./log.mjs";
 import { guard, shieldStats } from "./shield.mjs";
@@ -12,6 +11,7 @@ import { runDirect } from "./direct.mjs";
 import { runAgent } from "./agent.mjs";
 import { runRea } from "./rea.mjs";
 import { resolveChrome } from "./browser.mjs";
+import { apiGate, confinePath, hostOk, sessionCookie, tokenMatches, validateStartup } from "./security.mjs";
 
 const MAX_BODY = 256 * 1024;
 
@@ -52,15 +52,6 @@ function readBody(req) {
     req.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
     req.on("error", reject);
   });
-}
-
-function authOk(req) {
-  if (!config.tokenRequired) return true;
-  const header = String(req.headers["authorization"] || "");
-  const presented = header.startsWith("Bearer ") ? header.slice(7) : "";
-  const a = Buffer.from(presented);
-  const b = Buffer.from(config.token);
-  return a.length === b.length && timingSafeEqual(a, b);
 }
 
 function sse(res) {
@@ -109,6 +100,14 @@ async function handleAnalyze(req, res, bodyText) {
         error: `"${target.label}" targets need Agent mode. ${config.agentEnabled ? "Switch the mode toggle to Agent." : "Add an ANTHROPIC_API_KEY to enable it."}`,
       }),
     );
+  }
+
+  // Local-path targets are confined to the workspace (no ../, symlink escapes, credential stores).
+  if (target.detail?.path) {
+    const c = confinePath(target.detail.path);
+    if (!c.ok) return send(res, 403, "application/json", JSON.stringify({ error: `path refused: ${c.reason}` }));
+    target.input = c.path;
+    target.detail.path = c.path;
   }
 
   const emit = sse(res);
@@ -164,6 +163,26 @@ async function handleDoctor(res) {
 }
 
 const server = createServer(async (req, res) => {
+  const json403 = (status, error) => send(res, status, "application/json", JSON.stringify({ error }));
+  // Anti DNS-rebinding: every request must carry an expected Host.
+  if (!hostOk(req, config)) return json403(403, "host not allowed");
+  const path0 = (req.url || "/").split("?")[0];
+
+  // First visit with ?token=… : set the httpOnly session cookie, then strip it from the URL.
+  if (req.method === "GET" && path0 === "/") {
+    const q = new URL(req.url, "http://x").searchParams.get("token");
+    if (q !== null) {
+      if (!tokenMatches(q, config.token)) return json403(401, "unauthorized");
+      return send(res, 302, "text/plain; charset=utf-8", "", { location: "/", "set-cookie": sessionCookie(config.token), "cache-control": "no-store" });
+    }
+  }
+
+  // Auth + Origin + Content-Type gate on the whole API, before any body is read.
+  if (path0.startsWith("/api/")) {
+    const gate = apiGate(req, config);
+    if (!gate.ok) return json403(gate.status, gate.error);
+  }
+
   let bodyText = "";
   if (req.method === "POST") {
     try {
@@ -200,7 +219,6 @@ const server = createServer(async (req, res) => {
 
   // API (auth-gated when a token is required).
   if (path.startsWith("/api/")) {
-    if (!authOk(req)) return send(res, 401, "application/json", JSON.stringify({ error: "unauthorized" }));
     if (req.method === "GET" && path === "/api/health") return handleHealth(res);
     if (req.method === "POST" && path === "/api/doctor") return handleDoctor(res);
     if (req.method === "POST" && path === "/api/analyze") return handleAnalyze(req, res, bodyText);
@@ -210,11 +228,17 @@ const server = createServer(async (req, res) => {
   return send(res, 404, "text/plain; charset=utf-8", "Not found");
 });
 
+try {
+  validateStartup(config);
+} catch (err) {
+  log.error(`refusing to start: ${err.message}`);
+  process.exit(1);
+}
+
 server.listen(config.port, config.bind, () => {
-  log.info(`REA Console → http://${config.bind}:${config.port}`);
+  log.info(`REA Console listening on ${config.bind}:${config.port}`);
   log.info(`agent mode: ${config.agentEnabled ? `on (${config.model})` : "off (set ANTHROPIC_API_KEY)"}`);
-  log.info(`chrome: ${resolveChrome() || "not found"} · token: ${config.tokenRequired ? "required" : "none (loopback)"}`);
-  if (!config.isLoopback && !config.token) {
-    log.warn("bound to a non-loopback address with no REA_CONSOLE_TOKEN — set one immediately");
-  }
+  log.info(`chrome: ${resolveChrome() || "not found"} · token: required${config.tokenFromEnv ? " (REA_CONSOLE_TOKEN)" : " (random per launch)"}`);
+  const host = config.bind === "::1" ? "[::1]" : config.bind;
+  log.info(`open: http://${host}:${config.port}/?token=${config.token}`);
 });

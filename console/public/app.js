@@ -11,7 +11,6 @@ const state = {
   mode: "auto",
   running: false,
   abort: null,
-  token: localStorage.getItem("rea.token") || "",
 };
 
 const inputBox = $("#inputBox");
@@ -50,11 +49,9 @@ async function health() {
   }
 }
 
-// ── Fetch with optional bearer token ────────────────────────────────────
+// ── Same-origin fetch; auth is the httpOnly session cookie set by the ?token= URL ─
 function api(path, opts = {}) {
-  const headers = { ...(opts.headers || {}) };
-  if (state.token) headers["authorization"] = `Bearer ${state.token}`;
-  return fetch(path, { ...opts, headers });
+  return fetch(path, { ...opts, credentials: "same-origin" });
 }
 
 // ── Client-side target detection (mirror of the server; chip only) ───────
@@ -371,7 +368,7 @@ function setRunning(on) {
 async function runDoctor() {
   toast("Checking engine…");
   try {
-    const res = await api("/api/doctor", { method: "POST" });
+    const res = await api("/api/doctor", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" });
     if (res.status === 401) return promptToken(runDoctor);
     const d = await res.json();
     emptyState.hidden = true;
@@ -419,14 +416,9 @@ function renderHistory() {
   }
 }
 
-// ── Token prompt (only when the server requires one) ─────────────────────
-function promptToken(retry) {
-  const t = window.prompt("This console requires an access token (REA_CONSOLE_TOKEN):", "");
-  if (t) {
-    state.token = t.trim();
-    localStorage.setItem("rea.token", state.token);
-    retry?.();
-  }
+// ── Auth failure: the token lives in an httpOnly cookie, never in page JS ──
+function promptToken() {
+  toast("Unauthorized — open the console using the URL (with ?token=…) printed by the server.");
 }
 
 // ── Toast ──────────────────────────────────────────────────────────────────

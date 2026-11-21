@@ -29,7 +29,7 @@ Optional config — copy `.env.example` to `.env`:
 | --- | --- | --- |
 | `REA_CONSOLE_PORT` | `7749` | Listen port |
 | `REA_CONSOLE_BIND` | `127.0.0.1` | Bind address. Loopback = local-only. |
-| `REA_CONSOLE_TOKEN` | — | Bearer token. Optional on loopback, **required** off it. |
+| `REA_CONSOLE_TOKEN` | random per launch | Access token, always required. Open the `?token=` URL printed at startup (sets an httpOnly cookie). Off loopback it must be set and >=32 chars or the server refuses to start. `REA_WORKSPACE` (default: cwd) confines analyzable paths; `REA_CONSOLE_ALLOWED_HOSTS` adds Host values. |
 | `ANTHROPIC_API_KEY` | — | Enables **Agent mode**. Empty = Direct mode only. |
 | `REA_CONSOLE_MODEL` | `claude-opus-5-5` | Agent model (switch to `claude-sonnet-5-5` / `claude-haiku-5-5` to cut cost). |
 | `REA_BIN` | `../scripts/rea.mjs` | REA CLI entry |

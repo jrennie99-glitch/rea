@@ -22,6 +22,7 @@ import { config } from "./config.mjs";
 import { log } from "./log.mjs";
 import { ALLOWED_COMMANDS, runRea, runReaStream } from "./rea.mjs";
 import { launchForUrl, urlAllowed } from "./browser.mjs";
+import { confinePath } from "./security.mjs";
 
 const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
 const MAX_ITERATIONS = 14;
@@ -194,6 +195,9 @@ async function analyzeWebsite(url, ctx) {
 
 async function analyzePath(path, ctx) {
   const { emit } = ctx;
+  const confined = confinePath(path);
+  if (!confined.ok) return `refused: ${confined.reason}`;
+  path = confined.path;
   if (!existsSync(path)) return `path not found: ${path}`;
   let command;
   try {
