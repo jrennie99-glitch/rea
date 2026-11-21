@@ -1,6 +1,7 @@
 // Configuration loader. Reads a local .env (no dependency) then the process
 // environment, and derives a frozen config object the rest of the app reads.
 import { existsSync, readFileSync } from "node:fs";
+import { randomBytes } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 
@@ -97,9 +98,12 @@ export const config = Object.freeze({
   port: int(env.REA_CONSOLE_PORT, 7749),
   bind,
   isLoopback,
-  // A token is optional on loopback, mandatory off it.
-  token: env.REA_CONSOLE_TOKEN || "",
-  tokenRequired: !isLoopback || Boolean(env.REA_CONSOLE_TOKEN),
+  // A token is ALWAYS required, loopback included. Per-launch random unless
+  // REA_CONSOLE_TOKEN is set (mandatory and >=32 chars off loopback).
+  token: env.REA_CONSOLE_TOKEN || (isLoopback ? randomBytes(32).toString("hex") : ""),
+  tokenFromEnv: Boolean(env.REA_CONSOLE_TOKEN),
+  tokenRequired: true,
+  allowedHosts: (env.REA_CONSOLE_ALLOWED_HOSTS || "").split(",").map((h) => h.trim().toLowerCase()).filter(Boolean),
 
   backend: llmBackend,
   anthropicKey: env.ANTHROPIC_API_KEY || "",
